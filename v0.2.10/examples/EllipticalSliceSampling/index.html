@@ -41,6 +41,465 @@ if (document.readyState === 'loading') {
     maybeAddWarning();
 };
 </script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">AbstractGPs.jl</span></div><form action="../../search/" class="docs-search"><input class="docs-search-query" id="documenter-search-query" name="q" placeholder="Search docs" type="text"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../api/">API</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href="">Approximate Inference using ESS</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Elliptical-Slice-Sampler"><span>Elliptical Slice Sampler</span></a></li></ul></li><li><a class="tocitem" href="../HMC/">Approximate Inference with NUTS-HMC</a></li><li><a class="tocitem" href="../VariationalInference/">Approximate Inference on Sparse GPs using VI</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href="">Approximate Inference using ESS</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="">Approximate Inference using ESS</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/JuliaGaussianProcesses/AbstractGPs.jl/blob/master/examples/EllipticalSliceSampling.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" href="#" id="documenter-settings-button" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" href="#" id="documenter-sidebar-button"></a></div></header><article class="content" id="documenter-page"><h1 id="Approximate-Inference-using-ESS"><a class="docs-heading-anchor" href="#Approximate-Inference-using-ESS">Approximate Inference using ESS</a><a id="Approximate-Inference-using-ESS-1"></a><a class="docs-heading-anchor-permalink" href="#Approximate-Inference-using-ESS" title="Permalink"></a></h1><p>Loading the necessary packages and setting seed.</p><pre><code class="language-julia">using AbstractGPs, Plots, Random
+<!-- NAVBAR START -->
+<style>
+    html {
+        scroll-padding-top: calc(55px + 1rem);
+    }
+
+    /* Documenter css tweaks */
+    .docs-sidebar {
+        margin-top: 3.75rem;
+    }
+
+    #documenter {
+        margin-top: 3.75rem;
+    }
+
+    .docs-version-selector {
+        margin-bottom: 60px !important;
+    }
+
+    @media screen and (max-width: 1056px) {
+        .docs-version-selector {
+            margin-bottom: 60px !important;
+        }
+
+        .docs-sidebar {
+            margin-top: 0 !important;
+        }
+    }
+    /* Documenter css tweaks ends here */
+
+    :root {
+        --heading-color: white;
+        --item-color: rgb(165, 165, 165);
+        --primary-bg: #073c44;
+        --hover-color: #8faad2;
+    }
+
+    .ext-navigation {
+        position: fixed;
+        height: 3.75rem;
+        top: 0;
+        width: 100%;
+        background-color: var(--primary-bg);
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        padding: 0 1.0625rem;
+        transition: transform 0.3s;
+    }
+
+    .ext-navbar-logo {
+        margin-left: 0.625rem;
+    }
+
+    .ext-nav-links {
+        display: flex;
+        align-items: center;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        flex-grow: 1;
+    }
+
+    .ext-nav-links li {
+        margin-left: 1rem !important;
+    }
+
+    .ext-nav-link {
+        color: white !important;
+        text-decoration: none;
+        font-size: 1.0625rem !important;
+        transition: color 0.2s ease;
+        cursor: pointer;
+    }
+
+    .ext-nav-link:hover,
+    .ext-navbar-item-single a:hover {
+        color: var(--hover-color) !important;
+    }
+
+    .ext-navbar-item-single a {
+        color: #fff !important;
+    }
+
+    .ext-menu-toggle {
+        display: none;
+        font-size: 1.5rem;
+        color: white;
+        cursor: pointer;
+    }
+
+    .ext-dropdown {
+        display: none;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        padding: 1.875rem;
+        position: absolute;
+        width: 100%;
+        left: 0;
+        background-color: #083c44;
+        line-height: 1.875rem;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        transform: translateY(-0.625rem);
+    }
+
+    #library-handler::after {
+        content: "▼";
+        font-size: 0.6875rem;
+        margin-left: 0.3125rem;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    #library-handler.open::after {
+        content: "▲";
+    }
+
+    .ext-dropdown.show {
+        display: grid;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .ext-dropdown ul {
+        height: auto;
+        width: 12.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .ext-dropdown ul li {
+        text-align: left;
+    }
+
+    .navbar-sub-item {
+        list-style: none;
+    }
+
+    .ext-dropdown ul a li {
+        color: var(--item-color);
+        width: 15.625rem;
+        border-radius: 3px;
+        padding: 0.125rem 0.625rem;
+        transition: background-color 0.2s ease;
+    }
+
+    .ext-dropdown ul a li:hover {
+        background-color: rgba(107, 107, 107, 0.5);
+    }
+
+    .ext-dropdown-item-heading {
+        color: var(--heading-color);
+        text-align: center;
+    }
+
+    /* Responsive styling */
+    @media (max-width: 966px) {
+        .ext-dropdown {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .ext-nav-links {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            background-color: var(--primary-bg);
+            position: absolute;
+            top: 3.75rem;
+            left: 0;
+            padding: 0.625rem 0;
+            height: auto;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(141, 141, 141) grey;
+        }
+
+        .ext-nav-links.show {
+            display: flex;
+        }
+
+        .ext-nav-links li {
+            margin: 0.625rem 0;
+            text-align: center;
+        }
+
+        .ext-menu-toggle {
+            display: block;
+            margin-left: auto;
+        }
+
+        .ext-navigation.hide {
+            transform: translateY(-3.75rem);
+        }
+
+        .ext-dropdown {
+            place-content: center;
+            text-align: center;
+            grid-template-columns: 1fr;
+            line-height: 1.25rem;
+            padding: 0.625rem;
+        }
+
+        .ext-dropdown ul {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 0.3125rem;
+        }
+
+        .ext-dropdown ul li {
+            text-align: center;
+        }
+
+        .ext-dropdown ul a li {
+            width: 100%;
+        }
+
+        .ext-dropdown ul a li:hover {
+            background-color: var(--primary-bg);
+            color: #fff;
+        }
+
+        /* Modified scroll bar */
+        .ext-nav-links::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .ext-nav-links::-webkit-scrollbar-track {
+            box-shadow: inset 0 0 5px grey;
+        }
+
+        .ext-nav-links::-webkit-scrollbar-thumb {
+            background: rgb(141, 141, 141);
+            border-radius: 3px;
+        }
+
+        .ext-nav-links::-webkit-scrollbar-thumb:hover {
+            background: #9b9b9b;
+        }
+    }
+    @media only screen and (max-width: 768px) {
+        .turing-logo {
+            display: none !important;
+        }
+    }
+    @media only screen and (min-width: 768px) {
+        .turing-collab {
+            display: none !important;
+        }
+    }
+</style>
+<nav class="ext-navigation">
+    <a href="https://github.com/JuliaGaussianProcesses">
+        <img src="https://avatars.githubusercontent.com/u/57909728?s=200&v=4" alt="JuliaGP Logo" class="ext-navbar-logo" height="24px" width="40px">
+    </a>
+    <a style="color: white !important; font-size: 21.25px !important; margin-left: 10px;" href="https://github.com/JuliaGaussianProcesses">JuliaGP</a>
+    <ul class="ext-nav-links">
+        <li>
+            <a class="ext-nav-link" href="https://juliagaussianprocesses.github.io/AbstractGPs.jl/">AbstractGPs</a>
+        </li>
+        <li>
+            <a class="ext-nav-link" href="https://juliagaussianprocesses.github.io/KernelFunctions.jl/">KernelFunctions</a>
+        </li>
+        <li>
+            <a class="ext-nav-link" href="https://juliagaussianprocesses.github.io/GPLikelihoods.jl/">GPLikelihoods</a>
+        </li>
+        <li>
+            <a class="ext-nav-link" href="https://juliagaussianprocesses.github.io/ApproximateGPs.jl/">ApproximateGPs</a>
+        </li>
+        <li>
+            <a class="ext-nav-link turing-collab" href="https://turinglang.org">Co-developed with Turing.jl</a>
+        </li>
+        <!-- Add a Dropdown with these classes in case it's required so that the current CSS works fine -->
+        <!-- <li>
+            <p class="ext-nav-link" id="library-handler">Libraries</p>
+            <div class="ext-dropdown" id="ext-dropdown-items">
+                <ul>
+                    <li class="ext-dropdown-item-heading">Modellinglanguages</li>
+                    <a href="https://turinglang.org/DynamicPPL.jl/">
+                        <li>DynamicPPL</li>
+                    </a>
+                    <a href="https://turinglang.org/JuliaBUGS.jl/">
+                        <li>JuliaBUGS</li>
+                    </a>
+                    <a href="https://turinglang.org/TuringGLM.jl/">
+                        <li>TurineGLM</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading">MCMC</li>
+                    <a href="https://turinglang.org/AdvancedHMC.jl/">
+                        <li>AdvancedHMC</li>
+                    </a>
+                    <a href="https://turinglang.org/AbstractMCMC.jl/">
+                        <li>AbstractMCMC</li>
+                    </a>
+                    <a href="https://github.com/theogf/ThermodynamicIntegration.jl">
+                        <li>ThermodynamicIntegration</li>
+                    </a>
+                    <a href="https://turinglang.org/AdvancedPS.jl/">
+                        <li>AdvancedPS</li>
+                    </a>
+                    <a href="https://turinglang.org/EllipticalSliceSampling.jl/">
+                        <li>EllipticalSliceSampling</li>
+                    </a>
+                    <a href="https://turinglang.org/NestedSamplers.jl/">
+                        <li>NestedSamplers</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading">Diagnostics</li>
+                    <a href="https://turinglang.org/MCMCChains.jl/">
+                        <li>MCMCChains</li>
+                    </a>
+                    <a href="https://turinglang.org/MCMCDiagnosticTools.jl/">
+                        <li>MCMCDiagnosticTools</li>
+                    </a>
+                    <a href="https://turinglang.org/ParetoSmooth.jl/">
+                        <li>ParetoSmooth</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading">Gaussion Processes</li>
+                    <a href="https://juliagaussianprocesses.github.io/AbstractGPs.jl/">
+                        <li>AbstractGPs</li>
+                    </a>
+                    <a href="https://juliagaussianprocesses.github.io/KernelFunctions.jl/">
+                        <li>KernelFunctions</li>
+                    </a>
+                    <a href="https://juliagaussianprocesses.github.io/ApproximateGPs.jl/">
+                        <li>ApproximateGPs</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
+                        <a href="https://turinglang.org/Bijectors.jl/">Bijectors</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
+                        <a href="https://turinglang.org/TuringCallbacks.jl/">TuringCallbacks</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
+                        <a href="https://turinglang.org/TuringBenchmarking.jl/">TuringBenchmarking</a>
+                    </li>
+                </ul>
+            </div>
+        </li> -->
+    </ul>
+    <a href="https://turinglang.org/" title="Co-developed with Turing.jl">
+        <img src="https://turinglang.org/assets/images/turing-logo.svg" alt="Turing Logo" class="ext-navbar-logo turing-logo" height="24px" width="40px">
+    </a>
+    <!-- Github Logo -->
+    <!-- <a href="https://github.com/JuliaGaussianProcesses/">
+        <svg width="32px" height="32px" viewBox="-8.2 -8.2 36.40 36.40" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000">
+            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+            <g id="SVGRepo_iconCarrier">
+                <title>github [#142]</title>
+                <desc>Created with Sketch.</desc>
+                <defs></defs>
+                <g id="Page-1" stroke-width="0.0002" fill="none" fill-rule="evenodd">
+                    <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -7559.000000)" fill="#ffffff">
+                        <g id="icons" transform="translate(56.000000, 160.000000)">
+                            <path
+                                d="M94,7399 C99.523,7399 104,7403.59 104,7409.253 C104,7413.782 101.138,7417.624 97.167,7418.981 C96.66,7419.082 96.48,7418.762 96.48,7418.489 C96.48,7418.151 96.492,7417.047 96.492,7415.675 C96.492,7414.719 96.172,7414.095 95.813,7413.777 C98.04,7413.523 100.38,7412.656 100.38,7408.718 C100.38,7407.598 99.992,7406.684 99.35,7405.966 C99.454,7405.707 99.797,7404.664 99.252,7403.252 C99.252,7403.252 98.414,7402.977 96.505,7404.303 C95.706,7404.076 94.85,7403.962 94,7403.958 C93.15,7403.962 92.295,7404.076 91.497,7404.303 C89.586,7402.977 88.746,7403.252 88.746,7403.252 C88.203,7404.664 88.546,7405.707 88.649,7405.966 C88.01,7406.684 87.619,7407.598 87.619,7408.718 C87.619,7412.646 89.954,7413.526 92.175,7413.785 C91.889,7414.041 91.63,7414.493 91.54,7415.156 C90.97,7415.418 89.522,7415.871 88.63,7414.304 C88.63,7414.304 88.101,7413.319 87.097,7413.247 C87.097,7413.247 86.122,7413.234 87.029,7413.87 C87.029,7413.87 87.684,7414.185 88.139,7415.37 C88.139,7415.37 88.726,7417.2 91.508,7416.58 C91.513,7417.437 91.522,7418.245 91.522,7418.489 C91.522,7418.76 91.338,7419.077 90.839,7418.982 C86.865,7417.627 84,7413.783 84,7409.253 C84,7403.59 88.478,7399 94,7399"
+                                id="github-[#142]">
+                            </path>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </svg>
+    </a> -->
+    <span class="ext-menu-toggle">&#9776;</span>
+</nav>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const menuToggle = document.querySelector(".ext-menu-toggle");
+        const navLinks = document.querySelector(".ext-nav-links");
+        const nav = document.querySelector(".ext-navigation");
+        const navigationHandler = document.getElementById("library-handler");
+        const navigationItemsContainer =
+            document.getElementById("ext-dropdown-items");
+        let lastScrollY = window.scrollY;
+
+        function setAppropriateHeight() {
+            if (window.innerWidth <= 768) {
+                const viewportHeight = window.innerHeight;
+                const navHeight = nav.offsetHeight;
+                navLinks.style.maxHeight = `${viewportHeight - navHeight}px`;
+                navLinks.style.overflowY = "auto";
+            } else {
+                navLinks.style.maxHeight = "";
+                navLinks.style.overflowY = "";
+            }
+        }
+
+        // Toggle main menu for mobile
+        menuToggle.addEventListener("click", () => {
+            navLinks.classList.toggle("show");
+            if (navLinks.classList.contains("show")) {
+                setAppropriateHeight();
+                // Ensure the dropdown is hidden when menu is first opened
+                navigationItemsContainer.style.display = "none";
+                navigationItemsContainer.classList.remove("show");
+            }
+        });
+
+        // Close menus if clicked outside
+        document.addEventListener("click", (event) => {
+            if (
+                !navLinks.contains(event.target) &&
+                !menuToggle.contains(event.target)
+            ) {
+                navLinks.classList.remove("show");
+                navigationItemsContainer.classList.remove("show");
+                navigationHandler.classList.remove("open");
+            }
+        });
+
+        // Hide navigation bar on scroll down in mobile view
+        window.addEventListener("scroll", () => {
+            if (window.innerWidth <= 768) {
+                nav.classList.toggle("hide", window.scrollY > lastScrollY);
+                lastScrollY = window.scrollY;
+            }
+        });
+
+        // Library API script
+        navigationHandler.addEventListener("click", (event) => {
+            event.preventDefault(); // Prevent default action of the link
+            if (navigationItemsContainer.classList.contains("show")) {
+                navigationItemsContainer.classList.remove("show");
+                navigationHandler.classList.remove("open");
+                setTimeout(() => {
+                    navigationItemsContainer.style.display = "none";
+                }, 500); // Match the timeout to the CSS transition duration
+            } else {
+                navigationItemsContainer.style.display = "grid";
+                navigationHandler.classList.add("open");
+                setTimeout(() => {
+                    navigationItemsContainer.classList.add("show");
+                }, 10); // Delay to ensure the display change takes effect before adding class
+            }
+            setAppropriateHeight(); // Recalculate height when dropdown changes
+        });
+
+        // Handle window resize
+        window.addEventListener("resize", setAppropriateHeight);
+
+        // Initial setup
+        setAppropriateHeight();
+    });
+</script>
+<!-- NAVBAR END -->
 Random.seed!(1234);</code></pre><p>Loading toy regression <a href="https://github.com/GPflow/docs/blob/master/doc/source/notebooks/basics/data/regression_1D.csv">dataset</a> taken from GPFlow examples.</p><pre><code class="language-julia">x = [0.8658165855998895, 0.6661700880180962, 0.8049218148148531, 0.7714303440386239,
     0.14790478354654835, 0.8666105548197428, 0.007044577166530286, 0.026331737288148638,
     0.17188596617099916, 0.8897812990554013, 0.24323574561119998, 0.028590102134105955];
@@ -1688,3 +2147,4 @@ M1829.58 276.658 L2280.27 276.658 L2280.27 95.2176 L1829.58 95.2176  Z
   " fill="#ffffff" fill-opacity="1" fill-rule="evenodd"></path><polyline clip-path="url(#clip100)" points="
   1829.58,276.658 2280.27,276.658 2280.27,95.2176 1829.58,95.2176 1829.58,276.658 
   " style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none"></polyline><circle clip-path="url(#clip100)" cx="1926.24" cy="155.698" fill="#009af9" fill-opacity="1" fill-rule="evenodd" r="23" stroke="#000000" stroke-opacity="1" stroke-width="5.12"></circle><path clip-path="url(#clip100)" d="M 0 0 M2022.89 138.418 L2052.13 138.418 L2052.13 142.353 L2039.86 142.353 L2039.86 172.978 L2035.16 172.978 L2035.16 142.353 L2022.89 142.353 L2022.89 138.418 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2064.65 151.033 Q2063.93 150.617 2063.07 150.431 Q2062.24 150.223 2061.22 150.223 Q2057.61 150.223 2055.67 152.584 Q2053.75 154.922 2053.75 159.32 L2053.75 172.978 L2049.46 172.978 L2049.46 147.052 L2053.75 147.052 L2053.75 151.08 Q2055.09 148.718 2057.24 147.584 Q2059.39 146.427 2062.47 146.427 Q2062.91 146.427 2063.44 146.496 Q2063.98 146.543 2064.63 146.658 L2064.65 151.033 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2080.9 159.945 Q2075.74 159.945 2073.75 161.126 Q2071.75 162.306 2071.75 165.154 Q2071.75 167.422 2073.24 168.765 Q2074.74 170.084 2077.31 170.084 Q2080.85 170.084 2082.98 167.584 Q2085.13 165.061 2085.13 160.894 L2085.13 159.945 L2080.9 159.945 M2089.39 158.186 L2089.39 172.978 L2085.13 172.978 L2085.13 169.042 Q2083.68 171.403 2081.5 172.538 Q2079.32 173.649 2076.18 173.649 Q2072.19 173.649 2069.83 171.427 Q2067.5 169.181 2067.5 165.431 Q2067.5 161.056 2070.41 158.834 Q2073.35 156.612 2079.16 156.612 L2085.13 156.612 L2085.13 156.195 Q2085.13 153.255 2083.19 151.658 Q2081.27 150.038 2077.77 150.038 Q2075.55 150.038 2073.44 150.57 Q2071.34 151.103 2069.39 152.167 L2069.39 148.232 Q2071.73 147.33 2073.93 146.89 Q2076.13 146.427 2078.21 146.427 Q2083.84 146.427 2086.62 149.343 Q2089.39 152.26 2089.39 158.186 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2093.86 147.052 L2098.12 147.052 L2098.12 172.978 L2093.86 172.978 L2093.86 147.052 M2093.86 136.959 L2098.12 136.959 L2098.12 142.353 L2093.86 142.353 L2093.86 136.959 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2124.14 157.329 L2124.14 172.978 L2119.88 172.978 L2119.88 157.468 Q2119.88 153.788 2118.44 151.959 Q2117.01 150.13 2114.14 150.13 Q2110.69 150.13 2108.7 152.33 Q2106.71 154.529 2106.71 158.325 L2106.71 172.978 L2102.43 172.978 L2102.43 147.052 L2106.71 147.052 L2106.71 151.08 Q2108.24 148.742 2110.3 147.584 Q2112.38 146.427 2115.09 146.427 Q2119.56 146.427 2121.85 149.205 Q2124.14 151.959 2124.14 157.329 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2160.74 150.987 L2160.74 136.959 L2165 136.959 L2165 172.978 L2160.74 172.978 L2160.74 169.089 Q2159.39 171.403 2157.33 172.538 Q2155.3 173.649 2152.43 173.649 Q2147.73 173.649 2144.76 169.899 Q2141.82 166.149 2141.82 160.038 Q2141.82 153.927 2144.76 150.177 Q2147.73 146.427 2152.43 146.427 Q2155.3 146.427 2157.33 147.561 Q2159.39 148.672 2160.74 150.987 M2146.22 160.038 Q2146.22 164.737 2148.14 167.422 Q2150.09 170.084 2153.47 170.084 Q2156.85 170.084 2158.79 167.422 Q2160.74 164.737 2160.74 160.038 Q2160.74 155.339 2158.79 152.677 Q2156.85 149.992 2153.47 149.992 Q2150.09 149.992 2148.14 152.677 Q2146.22 155.339 2146.22 160.038 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2181.25 159.945 Q2176.08 159.945 2174.09 161.126 Q2172.1 162.306 2172.1 165.154 Q2172.1 167.422 2173.58 168.765 Q2175.09 170.084 2177.66 170.084 Q2181.2 170.084 2183.33 167.584 Q2185.48 165.061 2185.48 160.894 L2185.48 159.945 L2181.25 159.945 M2189.74 158.186 L2189.74 172.978 L2185.48 172.978 L2185.48 169.042 Q2184.02 171.403 2181.85 172.538 Q2179.67 173.649 2176.52 173.649 Q2172.54 173.649 2170.18 171.427 Q2167.84 169.181 2167.84 165.431 Q2167.84 161.056 2170.76 158.834 Q2173.7 156.612 2179.51 156.612 L2185.48 156.612 L2185.48 156.195 Q2185.48 153.255 2183.54 151.658 Q2181.62 150.038 2178.12 150.038 Q2175.9 150.038 2173.79 150.57 Q2171.68 151.103 2169.74 152.167 L2169.74 148.232 Q2172.08 147.33 2174.28 146.89 Q2176.48 146.427 2178.56 146.427 Q2184.18 146.427 2186.96 149.343 Q2189.74 152.26 2189.74 158.186 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2198.42 139.691 L2198.42 147.052 L2207.19 147.052 L2207.19 150.362 L2198.42 150.362 L2198.42 164.436 Q2198.42 167.607 2199.28 168.51 Q2200.16 169.413 2202.82 169.413 L2207.19 169.413 L2207.19 172.978 L2202.82 172.978 Q2197.89 172.978 2196.01 171.149 Q2194.14 169.297 2194.14 164.436 L2194.14 150.362 L2191.01 150.362 L2191.01 147.052 L2194.14 147.052 L2194.14 139.691 L2198.42 139.691 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2223.44 159.945 Q2218.28 159.945 2216.29 161.126 Q2214.3 162.306 2214.3 165.154 Q2214.3 167.422 2215.78 168.765 Q2217.29 170.084 2219.86 170.084 Q2223.4 170.084 2225.53 167.584 Q2227.68 165.061 2227.68 160.894 L2227.68 159.945 L2223.44 159.945 M2231.94 158.186 L2231.94 172.978 L2227.68 172.978 L2227.68 169.042 Q2226.22 171.403 2224.05 172.538 Q2221.87 173.649 2218.72 173.649 Q2214.74 173.649 2212.38 171.427 Q2210.04 169.181 2210.04 165.431 Q2210.04 161.056 2212.96 158.834 Q2215.9 156.612 2221.71 156.612 L2227.68 156.612 L2227.68 156.195 Q2227.68 153.255 2225.74 151.658 Q2223.81 150.038 2220.32 150.038 Q2218.1 150.038 2215.99 150.57 Q2213.88 151.103 2211.94 152.167 L2211.94 148.232 Q2214.28 147.33 2216.48 146.89 Q2218.68 146.427 2220.76 146.427 Q2226.38 146.427 2229.16 149.343 Q2231.94 152.26 2231.94 158.186 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><circle clip-path="url(#clip100)" cx="1926.24" cy="216.178" fill="#e26f46" fill-opacity="1" fill-rule="evenodd" r="23" stroke="#000000" stroke-opacity="1" stroke-width="5.12"></circle><path clip-path="url(#clip100)" d="M 0 0 M2022.89 198.898 L2052.13 198.898 L2052.13 202.833 L2039.86 202.833 L2039.86 233.458 L2035.16 233.458 L2035.16 202.833 L2022.89 202.833 L2022.89 198.898 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2070.71 219.43 L2070.71 221.513 L2051.13 221.513 Q2051.41 225.911 2053.77 228.226 Q2056.15 230.518 2060.39 230.518 Q2062.84 230.518 2065.13 229.916 Q2067.45 229.314 2069.72 228.11 L2069.72 232.138 Q2067.43 233.11 2065.02 233.62 Q2062.61 234.129 2060.13 234.129 Q2053.93 234.129 2050.3 230.518 Q2046.69 226.907 2046.69 220.749 Q2046.69 214.384 2050.11 210.657 Q2053.56 206.907 2059.39 206.907 Q2064.63 206.907 2067.66 210.286 Q2070.71 213.643 2070.71 219.43 M2066.45 218.18 Q2066.41 214.685 2064.49 212.601 Q2062.59 210.518 2059.44 210.518 Q2055.88 210.518 2053.72 212.532 Q2051.59 214.546 2051.27 218.203 L2066.45 218.18 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2091.71 208.296 L2091.71 212.323 Q2089.9 211.397 2087.96 210.935 Q2086.01 210.472 2083.93 210.472 Q2080.76 210.472 2079.16 211.444 Q2077.59 212.416 2077.59 214.36 Q2077.59 215.842 2078.72 216.698 Q2079.86 217.532 2083.28 218.296 L2084.74 218.62 Q2089.28 219.592 2091.18 221.374 Q2093.1 223.134 2093.1 226.305 Q2093.1 229.916 2090.23 232.022 Q2087.38 234.129 2082.38 234.129 Q2080.3 234.129 2078.03 233.712 Q2075.78 233.319 2073.28 232.508 L2073.28 228.11 Q2075.64 229.337 2077.94 229.962 Q2080.23 230.564 2082.47 230.564 Q2085.48 230.564 2087.1 229.546 Q2088.72 228.504 2088.72 226.629 Q2088.72 224.893 2087.54 223.967 Q2086.38 223.041 2082.43 222.184 L2080.94 221.837 Q2076.99 221.004 2075.23 219.291 Q2073.47 217.555 2073.47 214.546 Q2073.47 210.888 2076.06 208.898 Q2078.65 206.907 2083.42 206.907 Q2085.78 206.907 2087.87 207.254 Q2089.95 207.601 2091.71 208.296 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2101.78 200.171 L2101.78 207.532 L2110.55 207.532 L2110.55 210.842 L2101.78 210.842 L2101.78 224.916 Q2101.78 228.087 2102.63 228.99 Q2103.51 229.893 2106.18 229.893 L2110.55 229.893 L2110.55 233.458 L2106.18 233.458 Q2101.25 233.458 2099.37 231.629 Q2097.5 229.777 2097.5 224.916 L2097.5 210.842 L2094.37 210.842 L2094.37 207.532 L2097.5 207.532 L2097.5 200.171 L2101.78 200.171 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2147.15 211.467 L2147.15 197.439 L2151.41 197.439 L2151.41 233.458 L2147.15 233.458 L2147.15 229.569 Q2145.81 231.883 2143.75 233.018 Q2141.71 234.129 2138.84 234.129 Q2134.14 234.129 2131.18 230.379 Q2128.24 226.629 2128.24 220.518 Q2128.24 214.407 2131.18 210.657 Q2134.14 206.907 2138.84 206.907 Q2141.71 206.907 2143.75 208.041 Q2145.81 209.152 2147.15 211.467 M2132.63 220.518 Q2132.63 225.217 2134.56 227.902 Q2136.5 230.564 2139.88 230.564 Q2143.26 230.564 2145.2 227.902 Q2147.15 225.217 2147.15 220.518 Q2147.15 215.819 2145.2 213.157 Q2143.26 210.472 2139.88 210.472 Q2136.5 210.472 2134.56 213.157 Q2132.63 215.819 2132.63 220.518 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2167.66 220.425 Q2162.5 220.425 2160.5 221.606 Q2158.51 222.786 2158.51 225.634 Q2158.51 227.902 2160 229.245 Q2161.5 230.564 2164.07 230.564 Q2167.61 230.564 2169.74 228.064 Q2171.89 225.541 2171.89 221.374 L2171.89 220.425 L2167.66 220.425 M2176.15 218.666 L2176.15 233.458 L2171.89 233.458 L2171.89 229.522 Q2170.43 231.883 2168.26 233.018 Q2166.08 234.129 2162.94 234.129 Q2158.95 234.129 2156.59 231.907 Q2154.25 229.661 2154.25 225.911 Q2154.25 221.536 2157.17 219.314 Q2160.11 217.092 2165.92 217.092 L2171.89 217.092 L2171.89 216.675 Q2171.89 213.735 2169.95 212.138 Q2168.03 210.518 2164.53 210.518 Q2162.31 210.518 2160.2 211.05 Q2158.1 211.583 2156.15 212.647 L2156.15 208.712 Q2158.49 207.81 2160.69 207.37 Q2162.89 206.907 2164.97 206.907 Q2170.6 206.907 2173.37 209.823 Q2176.15 212.74 2176.15 218.666 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2184.83 200.171 L2184.83 207.532 L2193.61 207.532 L2193.61 210.842 L2184.83 210.842 L2184.83 224.916 Q2184.83 228.087 2185.69 228.99 Q2186.57 229.893 2189.23 229.893 L2193.61 229.893 L2193.61 233.458 L2189.23 233.458 Q2184.3 233.458 2182.43 231.629 Q2180.55 229.777 2180.55 224.916 L2180.55 210.842 L2177.43 210.842 L2177.43 207.532 L2180.55 207.532 L2180.55 200.171 L2184.83 200.171 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path><path clip-path="url(#clip100)" d="M 0 0 M2209.86 220.425 Q2204.69 220.425 2202.7 221.606 Q2200.71 222.786 2200.71 225.634 Q2200.71 227.902 2202.19 229.245 Q2203.7 230.564 2206.27 230.564 Q2209.81 230.564 2211.94 228.064 Q2214.09 225.541 2214.09 221.374 L2214.09 220.425 L2209.86 220.425 M2218.35 218.666 L2218.35 233.458 L2214.09 233.458 L2214.09 229.522 Q2212.63 231.883 2210.46 233.018 Q2208.28 234.129 2205.13 234.129 Q2201.15 234.129 2198.79 231.907 Q2196.45 229.661 2196.45 225.911 Q2196.45 221.536 2199.37 219.314 Q2202.31 217.092 2208.12 217.092 L2214.09 217.092 L2214.09 216.675 Q2214.09 213.735 2212.15 212.138 Q2210.23 210.518 2206.73 210.518 Q2204.51 210.518 2202.4 211.05 Q2200.3 211.583 2198.35 212.647 L2198.35 208.712 Q2200.69 207.81 2202.89 207.37 Q2205.09 206.907 2207.17 206.907 Q2212.8 206.907 2215.57 209.823 Q2218.35 212.74 2218.35 218.666 Z" fill="#000000" fill-opacity="1" fill-rule="evenodd"></path></svg><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../api/">« API</a><a class="docs-footer-nextpage" href="../HMC/">Approximate Inference with NUTS-HMC »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label></p><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div><p></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 21 September 2020 13:38">Monday 21 September 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></HTML>
+
